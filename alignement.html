@@ -166,6 +166,9 @@
     <h2>Règle du banc</h2>
     <p class="aide">Un joueur de banc entre quand au moins ce nombre de cases d'une position sont vides.</p>
     <div class="compteur"><label for="seuil">Cases vides minimum</label><input id="seuil" type="number" min="1" max="9"></div>
+    <div class="compteur"><input id="faibles" type="checkbox"><label for="faibles">Réservistes seulement contre une équipe faible (défensive parmi les 10 pires)</label></div>
+    <div class="compteur"><input id="blessure" type="checkbox"><label for="blessure">Sauf pour remplacer un partant blessé</label></div>
+    <p class="aide" id="liste-faibles"></p>
     <div class="outils"><button class="btn danger" id="reinit">Remettre l'effectif de départ</button></div>
   </section>
 
@@ -189,6 +192,8 @@ const ALIAS = { NJ:"NJD", TB:"TBL", LA:"LAK", SJ:"SJS", MON:"MTL", WAS:"WSH", CL
 const norme = eq => { const e = String(eq||"").trim().toUpperCase(); return ALIAS[e] || e; };
 /* attaques fortes par défaut, avant d'avoir assez de matchs au classement */
 const ATTAQUES_FORTES_DEFAUT = ["COL","EDM","TBL","FLA","DAL","CAR","TOR","VGK"];
+/* défensives les plus faibles par défaut, avant d'avoir assez de matchs au classement */
+const DEFENSIVES_FAIBLES_DEFAUT = ["CHI","SJS","NSH","CGY","SEA","PHI","WPG","PIT","NYR","VAN"];
 
 const EFFECTIF_DEPART = [
   ["David Pastrnak","F","BOS",2.6,true], ["Jack Hughes","F","NJD",2.6,true], ["Wyatt Johnston","F","DAL",2.4,true],
@@ -203,7 +208,7 @@ const EFFECTIF_DEPART = [
 ].map((j,i)=>({ id:"j"+i, nom:j[0], pos:j[1], eq:j[2], moy:j[3], partant:j[4], etat:"actif" }));
 
 function etatDepart(){
-  return { joueurs: JSON.parse(JSON.stringify(EFFECTIF_DEPART)), seuil: 3,
+  return { joueurs: JSON.parse(JSON.stringify(EFFECTIF_DEPART)), seuil: 3, faiblesSeulement: true, blessureToujours: true,
            utilises: { F:0, D:0, U:0, G:0 }, confirmes: [] };
 }
 let etat = charger();
@@ -245,6 +250,13 @@ function attaquesFortes(){
   }
   return ATTAQUES_FORTES_DEFAUT;
 }
+function adversairesFaibles(){
+  if(classement && classement.equipes){
+    const e = classement.equipes.filter(x => x.pj >= 8 && x.ba != null);
+    if(e.length >= 16) return e.sort((a,b)=>b.ba/b.pj - a.ba/a.pj).slice(0,10).map(x=>x.abrev);
+  }
+  return DEFENSIVES_FAIBLES_DEFAUT;
+}
 function jouentAuto(date){ return Object.keys(matchsDu(date)); }
 function mauvaisAuto(date){
   const m = matchsDu(date), hier = matchsDu(decale(date,-1)), fortes = attaquesFortes();
@@ -263,7 +275,7 @@ function jourCourant(date){
 }
 
 /* ================== OPTIMISATION ================== */
-function optimiser(jouentListe, mauvaisListe){
+function optimiser(jouentListe, mauvaisListe, date){
   const jouent = new Set(jouentListe.map(norme)), mauvais = new Set(mauvaisListe);
   const dispo = etat.joueurs.filter(j => jouent.has(norme(j.eq)));
   const aligne = { F:[], D:[], U:[], G:[] }, banc = [];
@@ -283,7 +295,13 @@ function optimiser(jouentListe, mauvaisListe){
   ["F","D"].forEach(p => {
     sains.filter(j => j.pos === p && !j.partant).sort(tri).forEach(j => {
       const vides = CASES[p] - aligne[p].length;
-      if(vides > 0 && (vides >= etat.seuil || blessesPartants[p] > 0)){
+      const m = calendrier ? matchsDu(date)[norme(j.eq)] : null;
+      const faible = !m || adversairesFaibles().includes(m.adv);
+      const blessure = blessesPartants[p] > 0;
+      if(etat.faiblesSeulement && !faible && !(blessure && etat.blessureToujours)){
+        banc.push({ j, raison:"Adversaire trop fort ("+m.adv+")" }); return;
+      }
+      if(vides > 0 && (vides >= etat.seuil || blessure)){
         aligne[p].push(j); if(blessesPartants[p] > 0) blessesPartants[p]--;
       } else if(aligne.U.length < CASES.U && (CASES.F - aligne.F.length + CASES.D - aligne.D.length + 1) >= etat.seuil){
         aligne.U.push(j);
@@ -334,12 +352,12 @@ function rendreSoir(){
       return '<button class="equipe" aria-pressed="'+bad+'" data-mauvais="'+j.id+'">'+esc(j.nom)+' '+esc(adversaireTexte(j,dateSel))+(bad?' · mauvais match'+(r?' ('+esc(r)+')':''):'')+'</button>';
     }).join("") + '</div>') : "";
 
-  const { aligne, banc } = optimiser(jour.jouent, jour.mauvais);
+  const { aligne, banc } = optimiser(jour.jouent, jour.mauvais, dateSel);
   const ligne = (j, texte) => '<div class="joueur"><div><div class="nom">'+esc(j.nom)+'</div><div class="detail">'+esc(adversaireTexte(j,dateSel))+(texte?' · '+esc(texte):'')+'</div></div><div class="moy">'+f1(j.moy)+'</div></div>';
   let html = "";
   ["F","D","U","G"].forEach(p => {
     html += '<div class="groupe">'+NOMS_POS[p]+' ('+aligne[p].length+'/'+CASES[p]+')</div>';
-    html += aligne[p].length ? aligne[p].map(j => ligne(j, j.partant ? "" : "réserviste")).join("") : '<div class="vide case-vide">Case vide</div>';
+    html += aligne[p].length ? aligne[p].map(j => ligne(j, j.partant ? "" : "réserviste, adversaire faible")).join("") : '<div class="vide case-vide">Case vide</div>';
   });
   document.getElementById("aligne").innerHTML = jour.jouent.length ? html : '<div class="vide">Aucun de tes joueurs ne joue à cette date.</div>';
   document.getElementById("banc").innerHTML = banc.length ? banc.map(b => ligne(b.j, b.raison)).join("") :
@@ -363,7 +381,7 @@ function rendreSemaine(){
   const jours = [...Array(7)].map((_,i) => decale(lundi, i));
   const noms = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
   document.getElementById("titre-semaine").textContent = "Semaine du " + deIso(jours[0]).toLocaleDateString("fr-CA",{day:"numeric",month:"long"}) + " au " + deIso(jours[6]).toLocaleDateString("fr-CA",{day:"numeric",month:"long"});
-  const res = jours.map(d => { const c = jourCourant(d); return optimiser(c.jouent, c.mauvais); });
+  const res = jours.map(d => { const c = jourCourant(d); return optimiser(c.jouent, c.mauvais, d); });
   let matchs = 0, pts = 0; const parJoueur = {};
   res.forEach((r, i) => {
     const alignes = new Set([...r.aligne.F, ...r.aligne.D, ...r.aligne.U, ...r.aligne.G].map(j => j.id));
@@ -405,6 +423,9 @@ function rendreEffectif(){
       '<td><button class="btn" data-retirer="'+j.id+'" aria-label="Retirer '+esc(j.nom)+'">Retirer</button></td>'+
     '</tr>').join("");
   document.getElementById("seuil").value = etat.seuil;
+  document.getElementById("faibles").checked = etat.faiblesSeulement;
+  document.getElementById("blessure").checked = etat.blessureToujours;
+  document.getElementById("liste-faibles").textContent = "Adversaires faibles en ce moment : " + adversairesFaibles().join(", ") + ".";
 }
 
 function rendrePlafonds(){
@@ -459,7 +480,7 @@ document.getElementById("aucune").addEventListener("click", () => { delete corre
 document.getElementById("confirmer").addEventListener("click", () => {
   if(etat.confirmes.includes(dateSel)) return;
   const jour = jourCourant(dateSel);
-  const { aligne } = optimiser(jour.jouent, jour.mauvais);
+  const { aligne } = optimiser(jour.jouent, jour.mauvais, dateSel);
   const n = aligne.F.length + aligne.D.length + aligne.U.length + aligne.G.length;
   if(!n){ document.getElementById("msg-soir").textContent = "Aucun joueur aligné : rien à ajouter."; return; }
   ["F","D","U","G"].forEach(p => etat.utilises[p] += aligne[p].length);
@@ -490,6 +511,8 @@ document.getElementById("ajouter").addEventListener("click", () => {
 document.getElementById("seuil").addEventListener("change", e => {
   etat.seuil = Math.max(1, Math.min(9, parseInt(e.target.value) || 3)); sauver(); rendreSoir(); rendreSemaine();
 });
+document.getElementById("faibles").addEventListener("change", e => { etat.faiblesSeulement = e.target.checked; sauver(); rendreSoir(); rendreSemaine(); });
+document.getElementById("blessure").addEventListener("change", e => { etat.blessureToujours = e.target.checked; sauver(); rendreSoir(); rendreSemaine(); });
 document.getElementById("reinit").addEventListener("click", () => {
   if(!confirm("Remettre l'effectif de départ ? Tes changements de joueurs seront perdus (les plafonds sont gardés).")) return;
   const u = etat.utilises, c = etat.confirmes; etat = etatDepart(); etat.utilises = u; etat.confirmes = c;
