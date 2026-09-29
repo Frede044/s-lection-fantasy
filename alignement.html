@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Alignement du soir — Eagles on ice</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=Barlow:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --glace:#EEF3F6; --surface:#FFFFFF; --ligne:#D5DEE5; --encre:#13212C; --sourd:#5E6E7B;
+    --bleue:#0B3D91; --bleue-doux:#E3EBF7; --rouge:#C8102E; --rouge-doux:#F9E3E6; --vert:#1E7A4C;
+    --ombre:0 1px 0 rgba(19,33,44,.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --glace:#0E1820; --surface:#16232D; --ligne:#26394A; --encre:#E6EDF2; --sourd:#93A5B4;
+      --bleue:#7FA6EA; --bleue-doux:#1B2D47; --rouge:#FF6B7F; --rouge-doux:#3A1C23; --vert:#5CC98F;
+    }
+  }
+  :root[data-theme="dark"]{
+    --glace:#0E1820; --surface:#16232D; --ligne:#26394A; --encre:#E6EDF2; --sourd:#93A5B4;
+    --bleue:#7FA6EA; --bleue-doux:#1B2D47; --rouge:#FF6B7F; --rouge-doux:#3A1C23; --vert:#5CC98F;
+  }
+  :root{box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);}
+  html{scroll-padding-top:env(safe-area-inset-top,0px);}
+  *,*::before,*::after{box-sizing:inherit;}
+  body{margin:0; background:var(--glace); color:var(--encre); font:16px/1.45 "Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;}
+  .page{max-width:760px; margin:0 auto; padding:18px 14px 60px;}
+  h1{font:800 34px/1 "Barlow Condensed","Arial Narrow",sans-serif; margin:6px 0 2px; letter-spacing:.2px;}
+  .sous{color:var(--sourd); margin:0 0 16px;}
+  nav{display:flex; gap:4px; border-bottom:2px solid var(--ligne); margin-bottom:16px; overflow-x:auto;}
+  nav button{font:700 18px "Barlow Condensed","Arial Narrow",sans-serif; background:none; border:none; color:var(--sourd);
+    padding:8px 12px; border-bottom:3px solid transparent; margin-bottom:-2px; cursor:pointer; white-space:nowrap;}
+  nav button[aria-selected="true"]{color:var(--bleue); border-bottom-color:var(--bleue);}
+  button:focus-visible, input:focus-visible, select:focus-visible{outline:3px solid var(--bleue); outline-offset:2px;}
+  h2{font:700 22px/1.1 "Barlow Condensed","Arial Narrow",sans-serif; margin:18px 0 8px;}
+  .aide{color:var(--sourd); font-size:14px; margin:0 0 10px;}
+  .equipes{display:flex; flex-wrap:wrap; gap:6px;}
+  .equipe{font:600 14px "Barlow",sans-serif; padding:7px 11px; border-radius:6px; border:1.5px solid var(--ligne);
+    background:var(--surface); color:var(--encre); cursor:pointer; min-width:54px;}
+  .equipe[aria-pressed="true"]{background:var(--bleue); border-color:var(--bleue); color:#fff;}
+  .outils{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px;}
+  .btn{font:600 14px "Barlow",sans-serif; padding:8px 12px; border-radius:6px; border:1.5px solid var(--ligne);
+    background:var(--surface); color:var(--encre); cursor:pointer;}
+  .btn.plein{background:var(--bleue); color:#fff; border-color:var(--bleue);}
+  .btn.danger{color:var(--rouge); border-color:var(--rouge);}
+
+  /* le tableau aligné / banc : la ligne bleue et la ligne rouge de la patinoire */
+  .tableau{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:6px;}
+  @media (max-width:620px){ .tableau{grid-template-columns:1fr;} }
+  .zone{background:var(--surface); border:1.5px solid var(--ligne); border-radius:8px; padding:12px 12px 6px;}
+  .zone.aligne{border-top:6px solid var(--bleue);}
+  .zone.banc{border-top:6px solid var(--rouge);}
+  .zone h3{font:800 24px "Barlow Condensed","Arial Narrow",sans-serif; margin:0 0 6px;}
+  .zone.aligne h3{color:var(--bleue);} .zone.banc h3{color:var(--rouge);}
+  .groupe{font:700 15px "Barlow Condensed","Arial Narrow",sans-serif; color:var(--sourd); margin:10px 0 2px;}
+  .joueur{display:flex; justify-content:space-between; gap:8px; padding:6px 0; border-bottom:1px solid var(--ligne);}
+  .joueur:last-child{border-bottom:none;}
+  .nom{font-weight:600;}
+  .detail{font-size:13px; color:var(--sourd);}
+  .moy{font:700 18px "Barlow Condensed","Arial Narrow",sans-serif; white-space:nowrap;}
+  .vide{color:var(--sourd); font-size:14px; padding:6px 0;}
+  .case-vide{color:var(--sourd); font-style:italic;}
+  .resume{display:flex; flex-wrap:wrap; gap:18px; background:var(--surface); border:1.5px solid var(--ligne);
+    border-radius:8px; padding:12px 14px; margin-top:14px;}
+  .resume div{min-width:120px;}
+  .resume strong{display:block; font:800 26px "Barlow Condensed","Arial Narrow",sans-serif;}
+  .resume span{color:var(--sourd); font-size:13px;}
+
+  /* effectif */
+  .tab-scroll{overflow-x:auto; background:var(--surface); border:1.5px solid var(--ligne); border-radius:8px;}
+  table{border-collapse:collapse; width:100%; min-width:560px; font-size:14px;}
+  th{text-align:left; font:700 15px "Barlow Condensed","Arial Narrow",sans-serif; color:var(--sourd); padding:8px; border-bottom:1.5px solid var(--ligne);}
+  td{padding:6px 8px; border-bottom:1px solid var(--ligne); vertical-align:middle;}
+  tr:last-child td{border-bottom:none;}
+  td input, td select{font:inherit; color:var(--encre); background:var(--glace); border:1px solid var(--ligne); border-radius:5px; padding:5px 6px; width:100%;}
+  td input[type="checkbox"]{width:auto;}
+  .num{text-align:right;}
+  .mini{width:70px;}
+
+  /* plafonds */
+  .plafond{background:var(--surface); border:1.5px solid var(--ligne); border-radius:8px; padding:12px 14px; margin-bottom:10px;}
+  .plafond-tete{display:flex; justify-content:space-between; align-items:baseline; gap:10px; flex-wrap:wrap;}
+  .plafond-tete strong{font:800 22px "Barlow Condensed","Arial Narrow",sans-serif;}
+  .barre{height:10px; background:var(--glace); border-radius:5px; overflow:hidden; margin:8px 0 6px; position:relative;}
+  .barre i{display:block; height:100%; background:var(--bleue);}
+  .barre b{position:absolute; top:-3px; width:2px; height:16px; background:var(--rouge);}
+  .etat{font-size:14px;}
+  .etat.ok{color:var(--vert);} .etat.alerte{color:var(--rouge);}
+  .compteur{display:flex; align-items:center; gap:6px; margin-top:6px;}
+  .compteur input{width:90px; font:inherit; color:var(--encre); background:var(--glace); border:1px solid var(--ligne); border-radius:5px; padding:5px 6px;}
+  .date-barre{display:flex; gap:6px; align-items:center; flex-wrap:wrap; margin:4px 0 6px;}
+  .date-barre input{font:600 16px "Barlow",sans-serif; color:var(--encre); background:var(--surface); border:1.5px solid var(--ligne); border-radius:6px; padding:6px 8px;}
+  .jeu{font-size:13px; color:var(--sourd); text-align:center; white-space:nowrap;}
+  .jeu.oui{color:var(--bleue); font-weight:700;} .jeu.banc{color:var(--rouge); font-weight:700;}
+  .note{background:var(--bleue-doux); border-radius:8px; padding:10px 12px; font-size:14px; margin-top:12px;}
+  .msg{min-height:22px; font-size:14px; color:var(--vert); margin-top:8px;}
+  @media (prefers-reduced-motion: no-preference){ .zone{transition:border-color .2s;} }
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>Alignement du soir</h1>
+  <p class="sous">Eagles on ice de l'Artique. Le calendrier de la LNH se charge tout seul : choisis la date, l'alignement suit.</p>
+
+  <div class="date-barre">
+    <button class="btn" id="veille" aria-label="Jour précédent">‹</button>
+    <input type="date" id="date" aria-label="Date">
+    <button class="btn" id="lendemain" aria-label="Jour suivant">›</button>
+    <button class="btn" id="aujourdhui">Aujourd'hui</button>
+  </div>
+  <p class="aide" id="etat-donnees"></p>
+  <nav role="tablist">
+    <button role="tab" data-onglet="soir" aria-selected="true">Ce soir</button>
+    <button role="tab" data-onglet="semaine" aria-selected="false">Semaine</button>
+    <button role="tab" data-onglet="effectif" aria-selected="false">Mon effectif</button>
+    <button role="tab" data-onglet="plafonds" aria-selected="false">Plafonds</button>
+  </nav>
+
+  <!-- CE SOIR -->
+  <section id="soir">
+    <h2>Qui joue ce soir ?</h2>
+    <p class="aide">Les équipes en bleu jouent à cette date selon le calendrier. Touche une équipe pour corriger au besoin (report, erreur).</p>
+    <div class="equipes" id="equipes"></div>
+    <div class="outils">
+      <button class="btn" id="aucune">Revenir au calendrier</button>
+    </div>
+
+    <div id="gardiens-matchs"></div>
+
+    <div class="tableau">
+      <div class="zone aligne"><h3>Aligné</h3><div id="aligne"></div></div>
+      <div class="zone banc"><h3>Banc</h3><div id="banc"></div></div>
+    </div>
+
+    <div class="resume" id="resume"></div>
+    <div class="outils">
+      <button class="btn plein" id="confirmer">Ajouter ce soir aux plafonds</button>
+    </div>
+    <div class="msg" id="msg-soir" role="status"></div>
+  </section>
+
+  <!-- SEMAINE -->
+  <section id="semaine" hidden>
+    <h2 id="titre-semaine">Semaine</h2>
+    <p class="aide">Ton alignement optimisé pour chaque jour de la semaine de duel (lundi au dimanche), avec la moyenne projetée.</p>
+    <div class="resume" id="resume-semaine"></div>
+    <div class="tab-scroll" style="margin-top:12px"><table><thead id="tete-semaine"></thead><tbody id="corps-semaine"></tbody></table></div>
+  </section>
+
+  <!-- EFFECTIF -->
+  <section id="effectif" hidden>
+    <h2>Mon effectif</h2>
+    <p class="aide">« Partant » = tes 15 réguliers (9 attaquants, 5 défenseurs, 1 UTIL). Les autres entrent seulement pour remplacer un blessé ou quand plusieurs cases sont vides. Mets à jour la moyenne (points par match ESPN) quand tu veux.</p>
+    <div class="tab-scroll">
+      <table>
+        <thead><tr><th>Joueur</th><th>Pos.</th><th>Équipe</th><th class="num">Moy.</th><th>Partant</th><th>État</th><th></th></tr></thead>
+        <tbody id="liste"></tbody>
+      </table>
+    </div>
+    <div class="outils">
+      <button class="btn" id="ajouter">Ajouter un joueur</button>
+    </div>
+    <h2>Règle du banc</h2>
+    <p class="aide">Un joueur de banc entre quand au moins ce nombre de cases d'une position sont vides.</p>
+    <div class="compteur"><label for="seuil">Cases vides minimum</label><input id="seuil" type="number" min="1" max="9"></div>
+    <div class="outils"><button class="btn danger" id="reinit">Remettre l'effectif de départ</button></div>
+  </section>
+
+  <!-- PLAFONDS -->
+  <section id="plafonds" hidden>
+    <h2>Mes plafonds de matchs</h2>
+    <p class="aide">Le trait rouge montre où tu devrais être aujourd'hui pour finir la saison pile au plafond. Corrige les chiffres avec ceux d'ESPN au besoin.</p>
+    <div id="liste-plafonds"></div>
+    <div class="note" id="note-plafonds"></div>
+  </section>
+</div>
+
+<script>
+/* ================== DONNÉES ================== */
+const CLE = "alignement-eagles-v2";
+const SAISON_DEBUT = new Date(2026, 8, 29), SAISON_FIN = new Date(2027, 3, 11);
+const PLAFONDS = { F: 756, D: 420, U: 84, G: 168 };
+const CASES = { F: 9, D: 5, U: 1, G: 2 };
+const NOMS_POS = { F: "Attaquants", D: "Défenseurs", U: "UTIL", G: "Gardiens" };
+const ALIAS = { NJ:"NJD", TB:"TBL", LA:"LAK", SJ:"SJS", MON:"MTL", WAS:"WSH", CLB:"CBJ", VEG:"VGK", UTAH:"UTA", NAS:"NSH" };
+const norme = eq => { const e = String(eq||"").trim().toUpperCase(); return ALIAS[e] || e; };
+/* attaques fortes par défaut, avant d'avoir assez de matchs au classement */
+const ATTAQUES_FORTES_DEFAUT = ["COL","EDM","TBL","FLA","DAL","CAR","TOR","VGK"];
+
+const EFFECTIF_DEPART = [
+  ["David Pastrnak","F","BOS",2.6,true], ["Jack Hughes","F","NJD",2.6,true], ["Wyatt Johnston","F","DAL",2.4,true],
+  ["Matthew Tkachuk","F","FLA",2.3,true], ["Tom Wilson","F","WSH",2.2,true], ["Dylan Guenther","F","UTA",2.1,true],
+  ["Cutter Gauthier","F","ANA",2.0,true], ["Jesper Bratt","F","NJD",1.9,true], ["Drake Batherson","F","OTT",1.9,true],
+  ["Leo Carlsson","F","ANA",1.8,true], ["Quinton Byfield","F","LAK",1.6,false],
+  ["Zach Werenski","D","CBJ",2.6,true], ["John Carlson","D","TBL",2.3,true], ["Filip Hronek","D","VAN",1.7,true],
+  ["Vince Dunn","D","SEA",1.6,true], ["Ivan Provorov","D","CBJ",1.6,true], ["Shea Theodore","D","VGK",1.6,false],
+  ["Luke Hughes","D","NJD",1.3,false],
+  ["Joel Hofer","G","STL",4.2,true], ["Jake Allen","G","NJD",4.1,true], ["John Gibson","G","DET",3.7,true],
+  ["Yaroslav Askarov","G","SJS",2.5,false]
+].map((j,i)=>({ id:"j"+i, nom:j[0], pos:j[1], eq:j[2], moy:j[3], partant:j[4], etat:"actif" }));
+
+function etatDepart(){
+  return { joueurs: JSON.parse(JSON.stringify(EFFECTIF_DEPART)), seuil: 3,
+           utilises: { F:0, D:0, U:0, G:0 }, confirmes: [] };
+}
+let etat = charger();
+let calendrier = null;      // { "AAAA-MM-JJ": [["AWAY","HOME"], ...] }
+let classement = null;      // standings.json
+let corrections = {};       // par date : { jouent:[...], mauvais:[...] } (en mémoire seulement)
+
+function charger(){
+  try{
+    const brut = localStorage.getItem(CLE);
+    if(brut){ const d = JSON.parse(brut); if(d && d.joueurs) return Object.assign(etatDepart(), d); }
+  }catch(e){ /* stockage indisponible */ }
+  return etatDepart();
+}
+function sauver(){ try{ localStorage.setItem(CLE, JSON.stringify(etat)); }catch(e){ /* page utilisable quand même */ } }
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const f1 = x => x.toFixed(1).replace(".", ",");
+const f2 = x => x.toFixed(2).replace(".", ",");
+
+/* ================== DATES ================== */
+const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const deIso = s => { const [a,m,j] = s.split("-").map(Number); return new Date(a, m-1, j); };
+const decale = (s, n) => { const d = deIso(s); d.setDate(d.getDate()+n); return iso(d); };
+function dateParDefaut(){ const a = new Date(); a.setHours(0,0,0,0); return iso(a < SAISON_DEBUT ? SAISON_DEBUT : a); }
+let dateSel = dateParDefaut();
+function lundiDe(s){ const d = deIso(s); const k = (d.getDay()+6)%7; d.setDate(d.getDate()-k); return iso(d); }
+
+/* ================== CALENDRIER ================== */
+function matchsDu(date){
+  if(!calendrier) return {};
+  const res = {};
+  (calendrier[date] || []).forEach(([a,h]) => { res[a] = { adv:h, dom:false }; res[h] = { adv:a, dom:true }; });
+  return res;
+}
+function attaquesFortes(){
+  if(classement && classement.equipes){
+    const e = classement.equipes.filter(x => x.pj >= 8 && x.bp != null);
+    if(e.length >= 16) return e.sort((a,b)=>b.bp/b.pj - a.bp/a.pj).slice(0,8).map(x=>x.abrev);
+  }
+  return ATTAQUES_FORTES_DEFAUT;
+}
+function jouentAuto(date){ return Object.keys(matchsDu(date)); }
+function mauvaisAuto(date){
+  const m = matchsDu(date), hier = matchsDu(decale(date,-1)), fortes = attaquesFortes();
+  return etat.joueurs.filter(j => j.pos === "G" && m[norme(j.eq)])
+    .filter(j => hier[norme(j.eq)] || fortes.includes(m[norme(j.eq)].adv)).map(j => j.id);
+}
+function raisonMauvais(j, date){
+  const m = matchsDu(date)[norme(j.eq)]; if(!m) return "";
+  if(matchsDu(decale(date,-1))[norme(j.eq)]) return "2e match en 2 soirs";
+  if(attaquesFortes().includes(m.adv)) return "attaque forte ("+m.adv+")";
+  return "";
+}
+function jourCourant(date){
+  if(!corrections[date]) corrections[date] = { jouent: calendrier ? jouentAuto(date) : [], mauvais: calendrier ? mauvaisAuto(date) : [] };
+  return corrections[date];
+}
+
+/* ================== OPTIMISATION ================== */
+function optimiser(jouentListe, mauvaisListe){
+  const jouent = new Set(jouentListe.map(norme)), mauvais = new Set(mauvaisListe);
+  const dispo = etat.joueurs.filter(j => jouent.has(norme(j.eq)));
+  const aligne = { F:[], D:[], U:[], G:[] }, banc = [];
+  const tri = (a,b) => b.moy - a.moy;
+  const sains = dispo.filter(j => j.etat === "actif");
+  dispo.filter(j => j.etat !== "actif").forEach(j => banc.push({ j, raison: j.etat === "ir" ? "Sur l'IR" : "Blessé" }));
+  const blessesPartants = { F:0, D:0 };
+  etat.joueurs.filter(j => j.partant && j.etat !== "actif" && j.pos !== "G").forEach(j => blessesPartants[j.pos]++);
+
+  ["F","D"].forEach(p => {
+    sains.filter(j => j.pos === p && j.partant).sort(tri).forEach(j => {
+      if(aligne[p].length < CASES[p]) aligne[p].push(j);
+      else if(aligne.U.length < CASES.U) aligne.U.push(j);
+      else banc.push({ j, raison:"Pas de place" });
+    });
+  });
+  ["F","D"].forEach(p => {
+    sains.filter(j => j.pos === p && !j.partant).sort(tri).forEach(j => {
+      const vides = CASES[p] - aligne[p].length;
+      if(vides > 0 && (vides >= etat.seuil || blessesPartants[p] > 0)){
+        aligne[p].push(j); if(blessesPartants[p] > 0) blessesPartants[p]--;
+      } else if(aligne.U.length < CASES.U && (CASES.F - aligne.F.length + CASES.D - aligne.D.length + 1) >= etat.seuil){
+        aligne.U.push(j);
+      } else {
+        banc.push({ j, raison: vides > 0 ? "Garde ta marge (moins de "+etat.seuil+" cases vides)" : "Pas de place" });
+      }
+    });
+  });
+  sains.filter(j => j.pos === "G").sort(tri).forEach(j => {
+    if(mauvais.has(j.id)) banc.push({ j, raison:"Mauvais match" });
+    else if(aligne.G.length < CASES.G) aligne.G.push(j);
+    else banc.push({ j, raison:"Déjà 2 gardiens" });
+  });
+  return { aligne, banc };
+}
+
+/* ================== RENDU ================== */
+function adversaireTexte(j, date){
+  const m = matchsDu(date)[norme(j.eq)];
+  return m ? (m.dom ? "vs " : "@ ") + m.adv : norme(j.eq);
+}
+function rendreEtatDonnees(){
+  const el = document.getElementById("etat-donnees");
+  if(!calendrier) el.textContent = "Calendrier non chargé : coche les équipes à la main. (Vérifie que calendrier.json est dans ton repo.)";
+  else {
+    const n = (calendrier[dateSel]||[]).length;
+    el.textContent = deIso(dateSel).toLocaleDateString("fr-CA",{weekday:"long", day:"numeric", month:"long"}) +
+      " : " + (n ? n+" match"+(n>1?"s":"")+" dans la LNH." : "aucun match dans la LNH.");
+  }
+  document.getElementById("date").value = dateSel;
+}
+function rendreSoir(){
+  const jour = jourCourant(dateSel);
+  const box = document.getElementById("equipes");
+  box.innerHTML = [...new Set(etat.joueurs.map(j => norme(j.eq)))].sort().map(eq => {
+    const on = jour.jouent.includes(eq);
+    const m = matchsDu(dateSel)[eq];
+    const qui = etat.joueurs.filter(j => norme(j.eq) === eq).map(j => j.nom.split(" ").slice(-1)[0]).join(", ");
+    return '<button class="equipe" aria-pressed="'+on+'" data-eq="'+esc(eq)+'" title="'+esc(qui)+'">'+esc(eq)+(m&&on?' '+(m.dom?'vs':'@')+' '+esc(m.adv):'')+'</button>';
+  }).join("");
+
+  const g = etat.joueurs.filter(j => j.pos === "G" && jour.jouent.includes(norme(j.eq)) && j.etat === "actif");
+  document.getElementById("gardiens-matchs").innerHTML = g.length ? (
+    '<h2>Tes gardiens qui jouent</h2><p class="aide">Les mauvais matchs sont marqués automatiquement : 2e match en 2 soirs, ou adversaire parmi les 8 meilleures attaques. Touche un gardien pour changer.</p>' +
+    '<div class="equipes">' + g.map(j => {
+      const bad = jour.mauvais.includes(j.id);
+      const r = raisonMauvais(j, dateSel);
+      return '<button class="equipe" aria-pressed="'+bad+'" data-mauvais="'+j.id+'">'+esc(j.nom)+' '+esc(adversaireTexte(j,dateSel))+(bad?' · mauvais match'+(r?' ('+esc(r)+')':''):'')+'</button>';
+    }).join("") + '</div>') : "";
+
+  const { aligne, banc } = optimiser(jour.jouent, jour.mauvais);
+  const ligne = (j, texte) => '<div class="joueur"><div><div class="nom">'+esc(j.nom)+'</div><div class="detail">'+esc(adversaireTexte(j,dateSel))+(texte?' · '+esc(texte):'')+'</div></div><div class="moy">'+f1(j.moy)+'</div></div>';
+  let html = "";
+  ["F","D","U","G"].forEach(p => {
+    html += '<div class="groupe">'+NOMS_POS[p]+' ('+aligne[p].length+'/'+CASES[p]+')</div>';
+    html += aligne[p].length ? aligne[p].map(j => ligne(j, j.partant ? "" : "réserviste")).join("") : '<div class="vide case-vide">Case vide</div>';
+  });
+  document.getElementById("aligne").innerHTML = jour.jouent.length ? html : '<div class="vide">Aucun de tes joueurs ne joue à cette date.</div>';
+  document.getElementById("banc").innerHTML = banc.length ? banc.map(b => ligne(b.j, b.raison)).join("") :
+    '<div class="vide">'+(jour.jouent.length ? "Personne qui joue ne reste sur le banc." : "—")+'</div>';
+
+  const tous = [...aligne.F, ...aligne.D, ...aligne.U, ...aligne.G];
+  const pts = tous.reduce((s,j)=>s+j.moy,0);
+  const deja = etat.confirmes.includes(dateSel);
+  document.getElementById("resume").innerHTML = tous.length ?
+    '<div><strong>'+tous.length+'</strong><span>matchs utilisés</span></div>'+
+    '<div><strong>'+f1(pts)+'</strong><span>points projetés</span></div>'+
+    '<div><strong>'+f2(pts/tous.length)+'</strong><span>points par match</span></div>' :
+    '<div><span>Aucun joueur aligné.</span></div>';
+  const bouton = document.getElementById("confirmer");
+  bouton.disabled = deja;
+  bouton.textContent = deja ? "Déjà ajouté aux plafonds" : "Ajouter cette journée aux plafonds";
+}
+
+function rendreSemaine(){
+  const lundi = lundiDe(dateSel);
+  const jours = [...Array(7)].map((_,i) => decale(lundi, i));
+  const noms = ["Lun","Mar","Mer","Jeu","Ven","Sam","Dim"];
+  document.getElementById("titre-semaine").textContent = "Semaine du " + deIso(jours[0]).toLocaleDateString("fr-CA",{day:"numeric",month:"long"}) + " au " + deIso(jours[6]).toLocaleDateString("fr-CA",{day:"numeric",month:"long"});
+  const res = jours.map(d => { const c = jourCourant(d); return optimiser(c.jouent, c.mauvais); });
+  let matchs = 0, pts = 0; const parJoueur = {};
+  res.forEach((r, i) => {
+    const alignes = new Set([...r.aligne.F, ...r.aligne.D, ...r.aligne.U, ...r.aligne.G].map(j => j.id));
+    etat.joueurs.forEach(j => {
+      parJoueur[j.id] = parJoueur[j.id] || [];
+      const joue = jourCourant(jours[i]).jouent.includes(norme(j.eq));
+      parJoueur[j.id].push(!joue ? "" : alignes.has(j.id) ? "oui" : "banc");
+      if(alignes.has(j.id)){ matchs++; pts += j.moy; }
+    });
+  });
+  const g = res.reduce((s,r)=>s+r.aligne.G.length,0);
+  document.getElementById("resume-semaine").innerHTML =
+    '<div><strong>'+matchs+'</strong><span>matchs utilisés</span></div>'+
+    '<div><strong>'+g+'</strong><span>départs de gardien</span></div>'+
+    '<div><strong>'+f1(pts)+'</strong><span>points projetés</span></div>'+
+    '<div><strong>'+(matchs?f2(pts/matchs):"—")+'</strong><span>moyenne de la semaine</span></div>';
+  document.getElementById("tete-semaine").innerHTML = '<tr><th>Joueur</th>'+jours.map((d,i)=>'<th class="jeu">'+noms[i]+' '+deIso(d).getDate()+'</th>').join("")+'<th class="num">Total</th></tr>';
+  const ordre = ["F","D","G"];
+  document.getElementById("corps-semaine").innerHTML = etat.joueurs.slice().sort((a,b)=>ordre.indexOf(a.pos)-ordre.indexOf(b.pos)||b.moy-a.moy).map(j => {
+    const c = parJoueur[j.id] || [];
+    const n = c.filter(x => x === "oui").length;
+    return '<tr><td><span class="nom">'+esc(j.nom)+'</span> <span class="detail">'+j.pos+'</span></td>'+
+      c.map(x => '<td class="jeu '+x+'">'+(x==="oui"?"Aligné":x==="banc"?"Banc":"")+'</td>').join("")+
+      '<td class="num">'+n+'</td></tr>';
+  }).join("");
+}
+
+function rendreEffectif(){
+  document.getElementById("liste").innerHTML = etat.joueurs.map(j =>
+    '<tr data-id="'+j.id+'">'+
+      '<td><input data-champ="nom" value="'+esc(j.nom)+'" aria-label="Nom"></td>'+
+      '<td><select data-champ="pos" aria-label="Position">'+["F","D","G"].map(p=>'<option'+(j.pos===p?' selected':'')+'>'+p+'</option>').join("")+'</select></td>'+
+      '<td><input class="mini" data-champ="eq" value="'+esc(j.eq)+'" aria-label="Équipe"></td>'+
+      '<td class="num"><input class="mini" data-champ="moy" inputmode="decimal" value="'+String(j.moy).replace(".",",")+'" aria-label="Moyenne"></td>'+
+      '<td><input type="checkbox" data-champ="partant"'+(j.partant?' checked':'')+' aria-label="Partant"></td>'+
+      '<td><select data-champ="etat" aria-label="État">'+
+        [["actif","Actif"],["blesse","Blessé"],["ir","IR"]].map(([v,t])=>'<option value="'+v+'"'+(j.etat===v?' selected':'')+'>'+t+'</option>').join("")+
+      '</select></td>'+
+      '<td><button class="btn" data-retirer="'+j.id+'" aria-label="Retirer '+esc(j.nom)+'">Retirer</button></td>'+
+    '</tr>').join("");
+  document.getElementById("seuil").value = etat.seuil;
+}
+
+function rendrePlafonds(){
+  const auj = new Date(); auj.setHours(0,0,0,0);
+  const total = (SAISON_FIN - SAISON_DEBUT)/864e5 + 1;
+  const frac = Math.min(1, Math.max(0, (auj - SAISON_DEBUT)/864e5 / total));
+  document.getElementById("liste-plafonds").innerHTML = ["F","D","U","G"].map(p => {
+    const u = etat.utilises[p], cap = PLAFONDS[p], cible = Math.round(cap*frac), ecart = u - cible;
+    const texte = ecart > 3 ? "En avance de "+ecart+" matchs : ralentis un peu." :
+                  ecart < -3 ? "En retard de "+(-ecart)+" matchs : tu peux ajouter des réservistes." : "Dans le rythme.";
+    return '<div class="plafond"><div class="plafond-tete"><strong>'+NOMS_POS[p]+'</strong><span>'+u+' / '+cap+'</span></div>'+
+      '<div class="barre"><i style="width:'+Math.min(100,u/cap*100)+'%"></i><b style="left:'+Math.min(100,frac*100)+'%"></b></div>'+
+      '<div class="etat '+(Math.abs(ecart)>3?'alerte':'ok')+'">'+texte+'</div>'+
+      '<div class="compteur"><label for="u-'+p+'">Matchs utilisés</label><input id="u-'+p+'" data-plafond="'+p+'" type="number" min="0" value="'+u+'"></div></div>';
+  }).join("");
+  const semaines = Math.max(1, (SAISON_FIN - new Date())/864e5/7);
+  document.getElementById("note-plafonds").innerHTML = "Pour finir au plafond, vise environ <strong>"+
+    Math.round((PLAFONDS.F-etat.utilises.F)/semaines)+" attaquants</strong>, <strong>"+
+    Math.round((PLAFONDS.D-etat.utilises.D)/semaines)+" défenseurs</strong> et <strong>"+
+    Math.round((PLAFONDS.G-etat.utilises.G)/semaines)+" départs de gardien</strong> par semaine d'ici la fin.";
+}
+function rendre(){ rendreEtatDonnees(); rendreSoir(); rendreSemaine(); rendreEffectif(); rendrePlafonds(); }
+
+/* ================== ÉVÉNEMENTS ================== */
+function changerDate(d){ dateSel = d; rendreEtatDonnees(); rendreSoir(); rendreSemaine(); document.getElementById("msg-soir").textContent = ""; }
+document.getElementById("veille").addEventListener("click", () => changerDate(decale(dateSel,-1)));
+document.getElementById("lendemain").addEventListener("click", () => changerDate(decale(dateSel,1)));
+document.getElementById("aujourdhui").addEventListener("click", () => changerDate(dateParDefaut()));
+document.getElementById("date").addEventListener("change", e => { if(e.target.value) changerDate(e.target.value); });
+
+document.querySelector("nav").addEventListener("click", e => {
+  const b = e.target.closest("button[data-onglet]"); if(!b) return;
+  document.querySelectorAll("nav button").forEach(x => x.setAttribute("aria-selected", x===b));
+  ["soir","semaine","effectif","plafonds"].forEach(id => document.getElementById(id).hidden = id !== b.dataset.onglet);
+});
+document.getElementById("soir").addEventListener("click", e => {
+  const jour = jourCourant(dateSel);
+  const eqBtn = e.target.closest("[data-eq]");
+  if(eqBtn){
+    const eq = eqBtn.dataset.eq;
+    jour.jouent = jour.jouent.includes(eq) ? jour.jouent.filter(x=>x!==eq) : [...jour.jouent, eq];
+    rendreSoir(); rendreSemaine(); return;
+  }
+  const mb = e.target.closest("[data-mauvais]");
+  if(mb){
+    const id = mb.dataset.mauvais;
+    jour.mauvais = jour.mauvais.includes(id) ? jour.mauvais.filter(x=>x!==id) : [...jour.mauvais, id];
+    rendreSoir(); rendreSemaine();
+  }
+});
+document.getElementById("aucune").addEventListener("click", () => { delete corrections[dateSel]; rendreSoir(); rendreSemaine(); });
+document.getElementById("confirmer").addEventListener("click", () => {
+  if(etat.confirmes.includes(dateSel)) return;
+  const jour = jourCourant(dateSel);
+  const { aligne } = optimiser(jour.jouent, jour.mauvais);
+  const n = aligne.F.length + aligne.D.length + aligne.U.length + aligne.G.length;
+  if(!n){ document.getElementById("msg-soir").textContent = "Aucun joueur aligné : rien à ajouter."; return; }
+  ["F","D","U","G"].forEach(p => etat.utilises[p] += aligne[p].length);
+  etat.confirmes.push(dateSel);
+  sauver(); rendre();
+  document.getElementById("msg-soir").textContent = n + " matchs ajoutés aux plafonds pour cette date.";
+});
+document.getElementById("liste").addEventListener("change", e => {
+  const tr = e.target.closest("tr"); if(!tr) return;
+  const j = etat.joueurs.find(x => x.id === tr.dataset.id); const c = e.target.dataset.champ;
+  if(!j || !c) return;
+  if(c === "partant") j.partant = e.target.checked;
+  else if(c === "moy") j.moy = parseFloat(e.target.value.replace(",", ".")) || 0;
+  else if(c === "eq") j.eq = norme(e.target.value);
+  else j[c] = e.target.value;
+  corrections = {};
+  sauver(); rendreSoir(); rendreSemaine();
+});
+document.getElementById("liste").addEventListener("click", e => {
+  const b = e.target.closest("[data-retirer]"); if(!b) return;
+  etat.joueurs = etat.joueurs.filter(j => j.id !== b.dataset.retirer);
+  corrections = {}; sauver(); rendre();
+});
+document.getElementById("ajouter").addEventListener("click", () => {
+  etat.joueurs.push({ id:"n"+Date.now(), nom:"Nouveau joueur", pos:"F", eq:"", moy:1.5, partant:false, etat:"actif" });
+  sauver(); rendreEffectif();
+});
+document.getElementById("seuil").addEventListener("change", e => {
+  etat.seuil = Math.max(1, Math.min(9, parseInt(e.target.value) || 3)); sauver(); rendreSoir(); rendreSemaine();
+});
+document.getElementById("reinit").addEventListener("click", () => {
+  if(!confirm("Remettre l'effectif de départ ? Tes changements de joueurs seront perdus (les plafonds sont gardés).")) return;
+  const u = etat.utilises, c = etat.confirmes; etat = etatDepart(); etat.utilises = u; etat.confirmes = c;
+  corrections = {}; sauver(); rendre();
+});
+document.getElementById("liste-plafonds").addEventListener("change", e => {
+  const p = e.target.dataset.plafond; if(!p) return;
+  etat.utilises[p] = Math.max(0, parseInt(e.target.value) || 0); sauver(); rendrePlafonds();
+});
+
+/* ================== CHARGEMENT DES DONNÉES ================== */
+async function chargerJson(url){
+  try{ const r = await fetch(url+"?v="+Date.now(), {cache:"no-store"}); if(r.ok) return await r.json(); }catch(e){ /* absent */ }
+  return null;
+}
+(async () => {
+  rendre();
+  const [cal, cls] = await Promise.all([chargerJson("calendrier.json"), chargerJson("standings.json")]);
+  if(cal && cal.jours) calendrier = cal.jours;
+  if(cls && cls.equipes) classement = cls;
+  corrections = {};
+  rendre();
+})();
+
+</script>
+</body>
+</html>
