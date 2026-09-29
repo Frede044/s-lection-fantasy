@@ -60,6 +60,9 @@
   .joueur:last-child{border-bottom:none;}
   .nom{font-weight:600;}
   .detail{font-size:13px; color:var(--sourd);}
+  .droite{display:flex; flex-direction:column; align-items:flex-end; gap:4px;}
+  .mini-btn{font-size:12px; padding:3px 8px;}
+  .choix{font:600 11px "Barlow",sans-serif; color:#fff; background:var(--bleue); border-radius:4px; padding:1px 5px; vertical-align:middle;}
   .moy{font:700 18px "Barlow Condensed","Arial Narrow",sans-serif; white-space:nowrap;}
   .vide{color:var(--sourd); font-size:14px; padding:6px 0;}
   .case-vide{color:var(--sourd); font-style:italic;}
@@ -125,7 +128,7 @@
     <p class="aide">Les équipes en bleu jouent à cette date selon le calendrier. Touche une équipe pour corriger au besoin (report, erreur).</p>
     <div class="equipes" id="equipes"></div>
     <div class="outils">
-      <button class="btn" id="aucune">Revenir au calendrier</button>
+      <button class="btn" id="aucune">Revenir au calendrier et à l'alignement suggéré</button>
     </div>
 
     <div id="gardiens-matchs"></div>
@@ -209,7 +212,7 @@ const EFFECTIF_DEPART = [
 
 function etatDepart(){
   return { joueurs: JSON.parse(JSON.stringify(EFFECTIF_DEPART)), seuil: 3, faiblesSeulement: true, blessureToujours: true,
-           utilises: { F:0, D:0, U:0, G:0 }, confirmes: [] };
+           utilises: { F:0, D:0, U:0, G:0 }, confirmes: [], forces: {} };
 }
 let etat = charger();
 let calendrier = null;      // { "AAAA-MM-JJ": [["AWAY","HOME"], ...] }
@@ -280,8 +283,18 @@ function optimiser(jouentListe, mauvaisListe, date){
   const dispo = etat.joueurs.filter(j => jouent.has(norme(j.eq)));
   const aligne = { F:[], D:[], U:[], G:[] }, banc = [];
   const tri = (a,b) => b.moy - a.moy;
-  const sains = dispo.filter(j => j.etat === "actif");
-  dispo.filter(j => j.etat !== "actif").forEach(j => banc.push({ j, raison: j.etat === "ir" ? "Sur l'IR" : "Blessé" }));
+  const forces = (etat.forces && etat.forces[date]) || {};
+  // joueurs retirés à la main
+  dispo.filter(j => forces[j.id] === "out").forEach(j => banc.push({ j, raison:"Retiré par toi", force:true }));
+  // joueurs ajoutés à la main : ils passent avant tout le monde
+  dispo.filter(j => forces[j.id] === "in").sort(tri).forEach(j => {
+    const p = j.pos;
+    if(aligne[p].length < CASES[p]) aligne[p].push(j);
+    else if(p !== "G" && aligne.U.length < CASES.U) aligne.U.push(j);
+    else banc.push({ j, raison:"Plus de case libre à sa position", force:true });
+  });
+  const sains = dispo.filter(j => j.etat === "actif" && !forces[j.id]);
+  dispo.filter(j => j.etat !== "actif" && !forces[j.id]).forEach(j => banc.push({ j, raison: j.etat === "ir" ? "Sur l'IR" : "Blessé" }));
   const blessesPartants = { F:0, D:0 };
   etat.joueurs.filter(j => j.partant && j.etat !== "actif" && j.pos !== "G").forEach(j => blessesPartants[j.pos]++);
 
@@ -353,14 +366,21 @@ function rendreSoir(){
     }).join("") + '</div>') : "";
 
   const { aligne, banc } = optimiser(jour.jouent, jour.mauvais, dateSel);
-  const ligne = (j, texte) => '<div class="joueur"><div><div class="nom">'+esc(j.nom)+'</div><div class="detail">'+esc(adversaireTexte(j,dateSel))+(texte?' · '+esc(texte):'')+'</div></div><div class="moy">'+f1(j.moy)+'</div></div>';
+  const forcesJour = (etat.forces && etat.forces[dateSel]) || {};
+  const ligne = (j, texte, cote) => {
+    const f = forcesJour[j.id];
+    const bouton = f ? '<button class="btn mini-btn" data-force="'+j.id+'" data-mode="clear">Annuler</button>'
+      : cote === "aligne" ? '<button class="btn mini-btn" data-force="'+j.id+'" data-mode="out">Retirer</button>'
+      : '<button class="btn mini-btn" data-force="'+j.id+'" data-mode="in">Faire jouer</button>';
+    return '<div class="joueur"><div><div class="nom">'+esc(j.nom)+(f?' <span class="choix">ton choix</span>':'')+'</div><div class="detail">'+esc(adversaireTexte(j,dateSel))+(texte?' · '+esc(texte):'')+'</div></div><div class="droite"><div class="moy">'+f1(j.moy)+'</div>'+bouton+'</div></div>';
+  };
   let html = "";
   ["F","D","U","G"].forEach(p => {
     html += '<div class="groupe">'+NOMS_POS[p]+' ('+aligne[p].length+'/'+CASES[p]+')</div>';
-    html += aligne[p].length ? aligne[p].map(j => ligne(j, j.partant ? "" : "réserviste, adversaire faible")).join("") : '<div class="vide case-vide">Case vide</div>';
+    html += aligne[p].length ? aligne[p].map(j => ligne(j, forcesJour[j.id] ? "" : j.partant ? "" : "réserviste, adversaire faible", "aligne")).join("") : '<div class="vide case-vide">Case vide</div>';
   });
   document.getElementById("aligne").innerHTML = jour.jouent.length ? html : '<div class="vide">Aucun de tes joueurs ne joue à cette date.</div>';
-  document.getElementById("banc").innerHTML = banc.length ? banc.map(b => ligne(b.j, b.raison)).join("") :
+  document.getElementById("banc").innerHTML = banc.length ? banc.map(b => ligne(b.j, b.raison, "banc")).join("") :
     '<div class="vide">'+(jour.jouent.length ? "Personne qui joue ne reste sur le banc." : "—")+'</div>';
 
   const tous = [...aligne.F, ...aligne.D, ...aligne.U, ...aligne.G];
@@ -469,6 +489,15 @@ document.getElementById("soir").addEventListener("click", e => {
     jour.jouent = jour.jouent.includes(eq) ? jour.jouent.filter(x=>x!==eq) : [...jour.jouent, eq];
     rendreSoir(); rendreSemaine(); return;
   }
+  const fb = e.target.closest("[data-force]");
+  if(fb){
+    const id = fb.dataset.force, mode = fb.dataset.mode;
+    etat.forces = etat.forces || {};
+    const f = etat.forces[dateSel] = etat.forces[dateSel] || {};
+    if(mode === "clear") delete f[id]; else f[id] = mode;
+    if(!Object.keys(f).length) delete etat.forces[dateSel];
+    sauver(); rendreSoir(); rendreSemaine(); return;
+  }
   const mb = e.target.closest("[data-mauvais]");
   if(mb){
     const id = mb.dataset.mauvais;
@@ -476,7 +505,7 @@ document.getElementById("soir").addEventListener("click", e => {
     rendreSoir(); rendreSemaine();
   }
 });
-document.getElementById("aucune").addEventListener("click", () => { delete corrections[dateSel]; rendreSoir(); rendreSemaine(); });
+document.getElementById("aucune").addEventListener("click", () => { delete corrections[dateSel]; if(etat.forces) delete etat.forces[dateSel]; sauver(); rendreSoir(); rendreSemaine(); });
 document.getElementById("confirmer").addEventListener("click", () => {
   if(etat.confirmes.includes(dateSel)) return;
   const jour = jourCourant(dateSel);
