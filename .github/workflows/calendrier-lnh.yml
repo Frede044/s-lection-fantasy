@@ -1,0 +1,42 @@
+# Télécharge le calendrier complet de la saison 2026-27 de la LNH dans calendrier.json.
+# À placer dans le repo à : .github/workflows/calendrier-lnh.yml
+name: Calendrier LNH
+
+on:
+  schedule:
+    - cron: "30 9 * * *"   # tous les jours à 9 h 30 UTC (5 h 30, heure de l'Est), pour suivre les reports
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  calendrier:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Télécharger le calendrier semaine par semaine
+        run: |
+          d=2026-09-28
+          : > semaines.jsonl
+          while [[ "$d" < "2027-04-19" ]]; do
+            curl -sfL "https://api-web.nhle.com/v1/schedule/$d" \
+              | jq -c '[ .gameWeek[] | { date, games: [ .games[] | select(.gameType == 2) | [ .awayTeam.abbrev, .homeTeam.abbrev ] ] } ]' \
+              >> semaines.jsonl
+            d=$(date -I -d "$d + 7 days")
+            sleep 1
+          done
+          jq -s '{ majLe: (now | todate), jours: (add | map({ (.date): .games }) | add) }' semaines.jsonl > calendrier.json
+          rm semaines.jsonl
+          echo "Jours avec des matchs : $(jq '[.jours[] | select(length > 0)] | length' calendrier.json)"
+          echo "Matchs au total : $(jq '[.jours[] | length] | add' calendrier.json)"
+
+      - name: Enregistrer dans le repo
+        run: |
+          git config user.name  "calendrier-lnh"
+          git config user.email "actions@users.noreply.github.com"
+          git add calendrier.json
+          git diff --cached --quiet || git commit -m "Calendrier LNH du $(date -u +%F)"
+          git pull --rebase
+          git push
